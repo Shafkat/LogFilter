@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Log Filter</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1e1e1e;
+            color: #ffffff;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 10;
+            background-color: #2d2d2d;
+            border-bottom: 1px solid #404040;
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-height: 56px;
+            height: auto;
+        }
+
+        .tab-container {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            flex: 1;
+            overflow-x: auto;
+            padding-right: 10px;
+            flex-wrap: wrap;
+        }
+
+        .tab {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background-color: #3d3d3d;
+            border: 1px solid #555;
+            border-radius: 6px;
+            padding: 8px 12px;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s ease;
+            min-width: 120px;
+            opacity: 1;
+        }
+
+        .tab:hover {
+            background-color: #4d4d4d;
+        }
+
+        .tab.active {
+            background-color: #007acc;
+            border-color: #007acc;
+        }
+
+        .tab.disabled {
+            opacity: 0.4;
+            filter: grayscale(1);
+        }
+
+        .tab-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #aaa;
+            border-radius: 3px;
+            background: #222;
+            margin-right: 6px;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .tab-toggle:checked {
+            background: #28a745;
+            border-color: #28a745;
+        }
+
+        .tab-toggle:checked::after {
+            content: '\2713';
+            color: #fff;
+            font-size: 14px;
+            position: absolute;
+            left: 2px;
+            top: 0px;
+        }
+
+        .tab-color {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: 2px solid #fff;
+            margin-right: 4px;
+        }
+
+        .tab-text {
+            flex: 1;
+            font-size: 16px;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+        }
+
+        .tab-close {
+            background: none;
+            border: none;
+            color: #ccc;
+            cursor: pointer;
+            font-size: 18px;
+            padding: 0;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+
+        .tab-close:hover {
+            background-color: #ff4444;
+            color: white;
+        }
+
+        .add-tab-btn {
+            background-color: #007acc;
+            border: none;
+            color: white;
+            border-radius: 6px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.2s ease;
+        }
+
+        .add-tab-btn:hover {
+            background-color: #005a9e;
+        }
+
+        .open-file-btn {
+            background-color: #28a745;
+            border: none;
+            color: white;
+            border-radius: 6px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.2s ease;
+        }
+
+        .open-file-btn:hover {
+            background-color: #218838;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .add-tab-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #2d2d2d;
+            border: 1px solid #555;
+            border-radius: 8px;
+            padding: 20px;
+            z-index: 1000;
+            min-width: 300px;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+        }
+
+        .modal-header {
+            margin-bottom: 15px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .modal-input {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 15px;
+            background-color: #3d3d3d;
+            border: 1px solid #555;
+            border-radius: 4px;
+            color: white;
+            font-size: 14px;
+        }
+
+        .color-picker {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .color-option {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 3px solid transparent;
+            cursor: pointer;
+            transition: border-color 0.2s ease;
+        }
+
+        .color-option.selected {
+            border-color: white;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .modal-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .modal-btn.primary {
+            background-color: #007acc;
+            color: white;
+        }
+
+        .modal-btn.secondary {
+            background-color: #555;
+            color: white;
+        }
+
+        .modal-btn:hover {
+            opacity: 0.8;
+        }
+
+        .main-content {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100vw;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        .content-split {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            position: relative;
+        }
+
+        .splitter {
+            height: 6px;
+            background-color: #404040;
+            cursor: ns-resize;
+            position: relative;
+        }
+
+        .splitter:hover {
+            background-color: #007acc;
+        }
+
+        .splitter::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 30px;
+            height: 2px;
+            background-color: #666;
+        }
+
+        .section {
+            overflow: hidden;
+            background-color: #1e1e1e;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .section-header {
+            background-color: #2d2d2d;
+            padding: 8px 12px;
+            border-bottom: 1px solid #404040;
+            font-size: 14px;
+            font-weight: bold;
+            color: #ccc;
+            margin-top: 8px;
+        }
+
+        .text-content {
+            padding: 12px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.4;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            height: 100%;
+            max-height: calc(100vh / 2 - 60px);
+            overflow-y: auto;
+        }
+
+        .line {
+            padding: 2px 4px;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: background-color 0.1s ease;
+        }
+
+        .line:hover {
+            background-color: #2d2d2d;
+        }
+
+        .line.selected {
+            background-color: #007acc;
+            color: white;
+        }
+
+        .highlight {
+            padding: 1px 2px;
+            border-radius: 2px;
+            font-weight: bold;
+        }
+
+        .drag-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 122, 204, 0.3);
+            border: 3px dashed #007acc;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+            z-index: 1001;
+        }
+
+        .drag-overlay.active {
+            display: flex;
+        }
+
+        .no-file-message {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #666;
+            font-size: 16px;
+        }
+
+        .file-info {
+            color: #ccc;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+
+        .show-all-btn {
+            background-color: #444;
+            border: none;
+            color: white;
+            border-radius: 6px;
+            padding: 4px 10px;
+            cursor: pointer;
+            font-size: 12px;
+            margin: 8px 0 0 12px;
+            transition: background-color 0.2s ease;
+        }
+        .show-all-btn:hover {
+            background-color: #007acc;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="tab-container" id="tabContainer">
+            <!-- Tabs will be dynamically added here -->
+        </div>
+        <button class="add-tab-btn" id="addTabBtn">+</button>
+        <button class="open-file-btn" id="openFileBtn">Open File</button>
+        <div class="file-info" id="fileInfo">No file loaded</div>
+    </div>
+
+    <div class="main-content">
+        <div class="content-split">
+            <div class="section" id="filteredSection">
+                <div class="section-header">Filtered Lines</div>
+                <div class="text-content" id="filteredContent">
+                    <div class="no-file-message">Drag and drop a text file to get started</div>
+                </div>
+            </div>
+            <div class="splitter" id="splitter"></div>
+            <div class="section" id="fullSection">
+                <div class="section-header">Full File Content <button class="show-all-btn" id="showAllBtn" style="display:none;">Show All</button></div>
+                <div class="text-content" id="fullContent">
+                    <div class="no-file-message">Drag and drop a text file to get started</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="drag-overlay" id="dragOverlay">
+        Drop file here to load
+    </div>
+
+    <div class="modal-overlay" id="modalOverlay" style="display: none;"></div>
+    <div class="add-tab-modal" id="addTabModal" style="display: none;">
+        <div class="modal-header">Add Filter String</div>
+        <input type="text" class="modal-input" id="filterInput" placeholder="Enter filter string...">
+        <div class="color-picker" id="colorPicker">
+            <!-- Color options will be dynamically added -->
+        </div>
+        <div class="modal-buttons">
+            <button class="modal-btn secondary" id="cancelBtn">Cancel</button>
+            <button class="modal-btn primary" id="addBtn">Add</button>
+        </div>
+    </div>
+
+    <input type="file" id="fileInput" class="file-input" accept=".txt,.log,text/plain">
+
+    <script>
+        class LogFilter {
+            constructor() {
+                this.tabs = [];
+                this.fileContent = '';
+                this.fileName = '';
+                this.selectedLine = null;
+                this.isDragging = false;
+                this.splitterHeight = 50; // percentage
+                
+                this.init();
+            }
+
+            init() {
+                this.loadTabs();
+                this.setupEventListeners();
+                this.setupColorPicker();
+                this.updateDisplay();
+            }
+
+            setupEventListeners() {
+                // File drag and drop
+                document.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    this.showDragOverlay();
+                });
+
+                document.addEventListener('dragleave', (e) => {
+                    if (!e.relatedTarget || !document.body.contains(e.relatedTarget)) {
+                        this.hideDragOverlay();
+                    }
+                });
+
+                document.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    this.hideDragOverlay();
+                    this.handleFileDrop(e);
+                });
+
+                // Tab management
+                document.getElementById('addTabBtn').addEventListener('click', () => {
+                    this.showAddTabModal();
+                });
+
+                document.getElementById('cancelBtn').addEventListener('click', () => {
+                    this.hideAddTabModal();
+                });
+
+                document.getElementById('addBtn').addEventListener('click', () => {
+                    this.addTab();
+                });
+
+                document.getElementById('filterInput').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        this.addTab();
+                    }
+                });
+
+                // Splitter
+                const splitter = document.getElementById('splitter');
+                splitter.addEventListener('mousedown', (e) => {
+                    this.isDragging = true;
+                    document.addEventListener('mousemove', this.handleSplitterMove.bind(this));
+                    document.addEventListener('mouseup', this.handleSplitterEnd.bind(this));
+                });
+
+                // Click outside modal to close
+                document.getElementById('modalOverlay').addEventListener('click', () => {
+                    this.hideAddTabModal();
+                });
+
+                // Open file
+                document.getElementById('openFileBtn').addEventListener('click', () => {
+                    document.getElementById('fileInput').click();
+                });
+
+                // File input change
+                document.getElementById('fileInput').addEventListener('change', (e) => {
+                    this.handleFileSelect(e);
+                });
+            }
+
+            setupColorPicker() {
+                const colors = [
+                    '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57',
+                    '#ff9ff3', '#54a0ff', '#5f27cd', '#00d2d3', '#ff9f43',
+                    '#10ac84', '#ee5a24', '#2f3542', '#747d8c', '#ff6348'
+                ];
+
+                const colorPicker = document.getElementById('colorPicker');
+                colors.forEach((color, index) => {
+                    const colorOption = document.createElement('div');
+                    colorOption.className = 'color-option';
+                    colorOption.style.backgroundColor = color;
+                    colorOption.dataset.color = color;
+                    
+                    if (index === 0) {
+                        colorOption.classList.add('selected');
+                    }
+                    
+                    colorOption.addEventListener('click', () => {
+                        document.querySelectorAll('.color-option').forEach(opt => opt.classList.remove('selected'));
+                        colorOption.classList.add('selected');
+                    });
+                    
+                    colorPicker.appendChild(colorOption);
+                });
+            }
+
+            showDragOverlay() {
+                document.getElementById('dragOverlay').classList.add('active');
+            }
+
+            hideDragOverlay() {
+                document.getElementById('dragOverlay').classList.remove('active');
+            }
+
+            async handleFileDrop(e) {
+                const file = e.dataTransfer.files[0];
+                if (file && (file.type === 'text/plain' || file.name.endsWith('.log') || file.name.endsWith('.txt'))) {
+                    try {
+                        this.fileContent = await file.text();
+                        this.fileName = file.name;
+                        document.title = this.fileName;
+                        document.getElementById('fileInfo').textContent = this.fileName;
+                        this.updateDisplay();
+                    } catch (error) {
+                        console.error('Error reading file:', error);
+                        alert('Error reading file. Please try again.');
+                    }
+                } else {
+                    alert('Please drop a valid text file (.txt, .log, or plain text).');
+                }
+            }
+
+            showAddTabModal() {
+                document.getElementById('modalOverlay').style.display = 'block';
+                document.getElementById('addTabModal').style.display = 'block';
+                document.getElementById('filterInput').focus();
+            }
+
+            hideAddTabModal() {
+                document.getElementById('modalOverlay').style.display = 'none';
+                document.getElementById('addTabModal').style.display = 'none';
+                document.getElementById('filterInput').value = '';
+            }
+
+            addTab() {
+                const input = document.getElementById('filterInput');
+                const text = input.value.trim();
+                if (!text) {
+                    alert('Please enter a filter string.');
+                    return;
+                }
+                if (this.tabs.some(tab => tab.text === text)) {
+                    alert('A tab with this string already exists.');
+                    return;
+                }
+                const selectedColor = document.querySelector('.color-option.selected').dataset.color;
+                const tab = {
+                    id: Date.now(),
+                    text: text,
+                    color: selectedColor,
+                    enabled: true
+                };
+                this.tabs.push(tab);
+                this.saveTabs();
+                this.updateDisplay();
+                this.hideAddTabModal();
+            }
+
+            removeTab(tabId) {
+                this.tabs = this.tabs.filter(tab => tab.id !== tabId);
+                this.saveTabs();
+                this.updateDisplay();
+            }
+
+            saveTabs() {
+                localStorage.setItem('logFilterTabs', JSON.stringify(this.tabs));
+            }
+
+            loadTabs() {
+                const saved = localStorage.getItem('logFilterTabs');
+                if (saved) {
+                    this.tabs = JSON.parse(saved);
+                }
+                // Ensure all tabs have enabled property
+                this.tabs = this.tabs.map(tab => ({ ...tab, enabled: tab.enabled !== false }));
+            }
+
+            updateDisplay() {
+                this.updateTabs();
+                this.updateContent();
+            }
+
+            updateTabs() {
+                const container = document.getElementById('tabContainer');
+                container.innerHTML = '';
+                this.tabs.forEach(tab => {
+                    const tabElement = document.createElement('div');
+                    tabElement.className = 'tab' + (tab.enabled === false ? ' disabled' : '');
+                    tabElement.innerHTML = `
+                        <div class="tab-color" style="background-color: ${tab.color}"></div>
+                        <span class="tab-text">${this.escapeHtml(tab.text)}</span>
+                        <button class="tab-close">×</button>
+                    `;
+                    // Toggle enabled/disabled on tab click (but not on close button click)
+                    tabElement.addEventListener('click', (e) => {
+                        if (e.target.classList.contains('tab-close')) return;
+                        this.toggleTabEnabled(tab.id);
+                    });
+                    // Attach close event
+                    const closeBtn = tabElement.querySelector('.tab-close');
+                    closeBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.removeTab(tab.id);
+                    });
+                    container.appendChild(tabElement);
+                });
+            }
+
+            toggleTabEnabled(tabId) {
+                this.tabs = this.tabs.map(tab =>
+                    tab.id === tabId ? { ...tab, enabled: !tab.enabled } : tab
+                );
+                this.saveTabs();
+                this.updateDisplay();
+            }
+
+            updateContent() {
+                if (!this.fileContent) {
+                    document.getElementById('filteredContent').innerHTML = '<div class="no-file-message">Drag and drop a text file to get started</div>';
+                    document.getElementById('fullContent').innerHTML = '<div class="no-file-message">Drag and drop a text file to get started</div>';
+                    return;
+                }
+
+                const lines = this.fileContent.split('\n');
+                this.renderFilteredContent(lines);
+                this.renderFullContent(lines);
+            }
+
+            renderFilteredContent(lines) {
+                const container = document.getElementById('filteredContent');
+                container.innerHTML = '';
+                const activeTabs = this.tabs.filter(tab => tab.enabled !== false);
+                if (activeTabs.length === 0) {
+                    container.innerHTML = '<div class="no-file-message">Enable filter tabs to see matching lines</div>';
+                    return;
+                }
+                const matchingLines = [];
+                lines.forEach((line, index) => {
+                    let hasMatch = false;
+                    let highlightedLine = line;
+                    activeTabs.forEach(tab => {
+                        if (line.toLowerCase().includes(tab.text.toLowerCase())) {
+                            hasMatch = true;
+                            const regex = new RegExp(`(${this.escapeRegex(tab.text)})`, 'gi');
+                            highlightedLine = highlightedLine.replace(regex, 
+                                `<span class="highlight" style="background-color: ${tab.color}">$1</span>`);
+                        }
+                    });
+                    if (hasMatch) {
+                        matchingLines.push({ line: highlightedLine, originalLine: line, index: index });
+                    }
+                });
+                if (matchingLines.length === 0) {
+                    container.innerHTML = '<div class="no-file-message">No lines match the current filters</div>';
+                    return;
+                }
+                matchingLines.forEach(({ line, originalLine, index }) => {
+                    const lineElement = document.createElement('div');
+                    lineElement.className = 'line';
+                    lineElement.innerHTML = line;
+                    lineElement.dataset.lineIndex = index;
+                    if (this.selectedLine === index) {
+                        lineElement.classList.add('selected');
+                    }
+                    lineElement.addEventListener('click', () => {
+                        this.selectLine(index, lineElement);
+                    });
+                    container.appendChild(lineElement);
+                });
+            }
+
+            renderFullContent(lines) {
+                const container = document.getElementById('fullContent');
+                container.innerHTML = '';
+                for (let i = 0; i < lines.length; i++) {
+                    const lineElement = document.createElement('div');
+                    lineElement.className = 'line';
+                    lineElement.textContent = lines[i];
+                    lineElement.dataset.lineIndex = i;
+                    if (i === this.selectedLine) {
+                        lineElement.classList.add('selected');
+                        // Scroll to selected line after rendering
+                        setTimeout(() => {
+                            lineElement.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                        }, 0);
+                    }
+                    container.appendChild(lineElement);
+                }
+            }
+
+            selectLine(lineIndex, lineElement) {
+                // Remove previous selection
+                document.querySelectorAll('.line.selected').forEach(el => {
+                    el.classList.remove('selected');
+                });
+                // Add selection to clicked line
+                lineElement.classList.add('selected');
+                this.selectedLine = lineIndex;
+                // Copy to clipboard
+                this.copyToClipboard(lineElement.textContent || lineElement.innerText);
+                // Refresh full content to highlight and scroll to the selected line
+                this.updateContent();
+            }
+
+            async copyToClipboard(text) {
+                try {
+                    await navigator.clipboard.writeText(text);
+                    // Optional: Show a brief notification
+                    this.showCopyNotification();
+                } catch (err) {
+                    console.error('Failed to copy text: ', err);
+                }
+            }
+
+            showCopyNotification() {
+                // Create a temporary notification
+                const notification = document.createElement('div');
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background-color: #007acc;
+                    color: white;
+                    padding: 10px 15px;
+                    border-radius: 4px;
+                    z-index: 1002;
+                    font-size: 14px;
+                `;
+                notification.textContent = 'Line copied to clipboard';
+                document.body.appendChild(notification);
+
+                setTimeout(() => {
+                    document.body.removeChild(notification);
+                }, 2000);
+            }
+
+            handleSplitterMove(e) {
+                if (!this.isDragging) return;
+                
+                const container = document.querySelector('.content-split');
+                const containerRect = container.getBoundingClientRect();
+                const newHeight = ((e.clientY - containerRect.top) / containerRect.height) * 100;
+                
+                this.splitterHeight = Math.max(20, Math.min(80, newHeight));
+                this.updateSplitterPosition();
+            }
+
+            handleSplitterEnd() {
+                this.isDragging = false;
+                document.removeEventListener('mousemove', this.handleSplitterMove.bind(this));
+                document.removeEventListener('mouseup', this.handleSplitterEnd.bind(this));
+            }
+
+            updateSplitterPosition() {
+                const filteredSection = document.getElementById('filteredSection');
+                const fullSection = document.getElementById('fullSection');
+                
+                filteredSection.style.height = `${this.splitterHeight}%`;
+                fullSection.style.height = `${100 - this.splitterHeight}%`;
+            }
+
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+
+            escapeRegex(text) {
+                return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            }
+
+            async handleFileSelect(e) {
+                const file = e.target.files[0];
+                if (file && (file.type === 'text/plain' || file.name.endsWith('.log') || file.name.endsWith('.txt'))) {
+                    try {
+                        this.fileContent = await file.text();
+                        this.fileName = file.name;
+                        document.title = this.fileName;
+                        document.getElementById('fileInfo').textContent = this.fileName;
+                        this.updateDisplay();
+                    } catch (error) {
+                        console.error('Error reading file:', error);
+                        alert('Error reading file. Please try again.');
+                    }
+                } else {
+                    alert('Please select a valid text file (.txt, .log, or plain text).');
+                }
+                // Reset the file input so the same file can be selected again
+                e.target.value = '';
+            }
+        }
+
+        // Initialize the application
+        const logFilter = new LogFilter();
+
+        // After DOMContentLoaded, set main-content top to header.offsetHeight
+        window.addEventListener('DOMContentLoaded', () => {
+            const header = document.querySelector('.header');
+            const mainContent = document.querySelector('.main-content');
+            function setMainContentTop() {
+                if (header && mainContent) {
+                    mainContent.style.top = header.offsetHeight + 'px';
+                }
+            }
+            setMainContentTop();
+            window.addEventListener('resize', setMainContentTop);
+        });
+    </script>
+</body>
+</html> 

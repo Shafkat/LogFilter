@@ -279,6 +279,8 @@
             flex-direction: column;
             flex: 1;
             position: relative;
+            margin-top: auto; /* Height of the header */
+            height: calc(100vh - 56px); /* Viewport height minus header */
         }
 
         .splitter {
@@ -309,6 +311,7 @@
             position: relative;
             display: flex;
             flex-direction: column;
+            min-height: 100px; /* Minimum height for sections */
         }
 
         .section-header {
@@ -328,8 +331,7 @@
             line-height: 1.4;
             white-space: pre-wrap;
             word-wrap: break-word;
-            height: 100%;
-            max-height: calc(100vh / 2 - 60px);
+            height: calc(100vh / 2 - 60px);
             overflow-y: auto;
         }
 
@@ -472,6 +474,11 @@
                 this.setupEventListeners();
                 this.setupColorPicker();
                 this.updateDisplay();
+
+                // Handle window resizing
+                window.addEventListener('resize', () => {
+                    this.updateSplitterPosition();
+                });
             }
 
             setupEventListeners() {
@@ -808,9 +815,13 @@
                 
                 const container = document.querySelector('.content-split');
                 const containerRect = container.getBoundingClientRect();
-                const newHeight = ((e.clientY - containerRect.top) / containerRect.height) * 100;
+                const availableHeight = containerRect.height;
                 
-                this.splitterHeight = Math.max(20, Math.min(80, newHeight));
+                // Calculate new height percentage
+                const newHeight = ((e.clientY - containerRect.top) / availableHeight) * 100;
+                
+                // Limit the splitter position
+                this.splitterHeight = Math.max(20, Math.min(70, newHeight));
                 this.updateSplitterPosition();
             }
 
@@ -823,9 +834,26 @@
             updateSplitterPosition() {
                 const filteredSection = document.getElementById('filteredSection');
                 const fullSection = document.getElementById('fullSection');
+                const headerHeight = document.querySelector('.header').offsetHeight;
                 
                 filteredSection.style.height = `${this.splitterHeight}%`;
                 fullSection.style.height = `${100 - this.splitterHeight}%`;
+
+                // Update text content areas to fill their containers
+                const filteredContent = document.getElementById('filteredContent');
+                const fullContent = document.getElementById('fullContent');
+                const filteredHeader = filteredSection.querySelector('.section-header');
+                const fullHeader = fullSection.querySelector('.section-header');
+
+                if (filteredContent && filteredHeader) {
+                    const availableHeight = filteredSection.offsetHeight - filteredHeader.offsetHeight;
+                    filteredContent.style.height = `${availableHeight}px`;
+                }
+
+                if (fullContent && fullHeader) {
+                    const availableHeight = fullSection.offsetHeight - fullHeader.offsetHeight;
+                    fullContent.style.height = `${availableHeight}px`;
+                }
             }
 
             escapeHtml(text) {

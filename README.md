@@ -111,7 +111,6 @@ A powerful, single-page web application for filtering and analyzing text files w
 ## Troubleshooting
 
 ### File Won't Load
-- Make sure you're dragging a `.txt` or `.log` file
 - Some browsers may have security restrictions on local files
 
 ### Filters Not Working
